@@ -1,98 +1,266 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Week 8 – Authenticated Tasks API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A NestJS REST API for task management using PostgreSQL, TypeORM, JWT authentication, bcrypt password hashing, DTO validation, and automated tests.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Tech Stack
 
-## Description
+* NestJS
+* TypeScript
+* PostgreSQL
+* TypeORM
+* JWT
+* Passport
+* bcrypt
+* class-validator
+* Jest
+* Supertest
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Setup
 
-## Project setup
+Install dependencies:
 
 ```bash
-$ npm install
+npm install
 ```
 
-## Compile and run the project
+Create a `.env` file in the project root:
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=your_password
+DB_DATABASE=week8-practice-db
+
+JWT_SECRET=your_jwt_secret
+
+PORT=3000
+```
+
+Run the application:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm run start:dev
 ```
 
-## Run tests
+The API runs on:
+
+```text
+http://localhost:3000
+```
+
+The database schema is managed through TypeORM migrations. `synchronize` is disabled.
+
+## Authentication
+
+### Register
+
+```http
+POST /auth/register
+```
+
+Request:
+
+```json
+{
+  "email": "test@gmail.com",
+  "password": "Test12345"
+}
+```
+
+The password is hashed with bcrypt and is never returned in the response.
+
+### Login
+
+```http
+POST /auth/login
+```
+
+Request:
+
+```json
+{
+  "email": "test@gmail.com",
+  "password": "Test12345"
+}
+```
+
+Response:
+
+```json
+{
+  "access_token": "JWT_TOKEN"
+}
+```
+
+The JWT contains:
+
+```json
+{
+  "sub": 1,
+  "email": "test@gmail.com"
+}
+```
+
+### Using the token
+
+For protected routes, send the JWT in the `Authorization` header:
+
+```http
+Authorization: Bearer JWT_TOKEN
+```
+
+Task write operations and project write operations require authentication.
+
+## Task Endpoints
+
+### Create Task
+
+```http
+POST /tasks
+```
+
+Protected.
+
+Example:
+
+```json
+{
+  "title": "Complete Week 8",
+  "description": "Finish authenticated tasks API",
+  "status": "todo",
+  "priority": 3,
+  "projectId": 1,
+  "assigneeId": 1,
+  "tagIds": [1, 2]
+}
+```
+
+Returns `201 Created` on success.
+
+### List Tasks
+
+```http
+GET /tasks
+```
+
+Supports optional filters:
+
+```text
+GET /tasks?status=todo
+GET /tasks?projectId=1
+GET /tasks?assigneeId=1
+```
+
+Filters can be combined:
+
+```text
+GET /tasks?status=todo&projectId=1&assigneeId=1
+```
+
+### Get Task
+
+```http
+GET /tasks/:id
+```
+
+Returns the task with its project, assignee, and tags loaded.
+
+Returns `404` if the task does not exist.
+
+### Update Task
+
+```http
+PATCH /tasks/:id
+```
+
+Protected.
+
+Only supplied fields are updated.
+
+Returns `404` if the task does not exist.
+
+### Delete Task
+
+```http
+DELETE /tasks/:id
+```
+
+Protected.
+
+Returns:
+
+```text
+204 No Content
+```
+
+Returns `404` if the task does not exist.
+
+## Project Endpoint
+
+### Create Project
+
+```http
+POST /projects
+```
+
+Protected.
+
+The authenticated user is used as the project owner.
+
+## Validation
+
+The API uses a global `ValidationPipe` with:
+
+* `whitelist: true`
+* `forbidNonWhitelisted: true`
+* `transform: true`
+
+Invalid request bodies return `400 Bad Request`.
+
+Fields not declared by the DTO are rejected.
+
+## Error Handling
+
+A global exception filter provides a consistent error response containing:
+
+```json
+{
+  "statusCode": 404,
+  "message": "Task not found",
+  "error": "Not Found",
+  "timestamp": "2026-08-31T00:00:00.000Z",
+  "path": "/tasks/999"
+}
+```
+
+## CORS
+
+CORS is enabled for the Next.js development origin.
+
+## Testing
+
+Run unit tests:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm test
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Run end-to-end authentication tests:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run test:e2e
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Build the project:
 
-## Resources
+```bash
+npm run build
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+The project includes:
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+* Unit tests for services/controllers
+* `TasksService.create` unit test with a mocked repository
+* E2E test for successful login
+* E2E test for incorrect password returning `401`
